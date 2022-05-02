@@ -1,0 +1,78 @@
+---
+title: "ESM 204 HW 3"
+author: "Patrick Pelegri-O'Day"
+date: "5/2/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(here)
+library(tidyverse)
+library(janitor)
+```
+
+**Starting facts**
+
+ - Consumers can be separated into two income groups: “high” and “low.” The data set provides price (in $) and quantity (in kWh) estimates of demand per month for the two groups. Run linear regressions (with an intercept) to estimate the demand curves for “high” and “low” income consumers.
+ - Initially, there is no tax on electricity consumption.
+ - The current electricity price (without any taxes) is $.10 per kWh.
+ - The marginal cost of producing a kWh of electricity is linear and has a price-intercept of 0.
+
+
+### Step 0
+
+```{r}
+# Read in energy data
+energy_raw <- read_csv(here('data', 'HW3_data.csv'))
+
+energy <- clean_names(energy_raw) %>% 
+  mutate(q_agg_kwh = q_high_kwh + q_low_kwh)
+
+  
+  # %>% 
+#  pivot_longer(q_low_kwh:q_high_kwh, names_to = 'income', values_to = 'q_kwh')
+
+
+```
+
+
+```{r}
+# Run linear regression to estimate demand curves for high- and low-income consumers
+high_lm <- lm(price_cents ~ q_high_kwh, data = energy)
+low_lm <- lm(price_cents ~ q_low_kwh, data = energy)
+agg_lm <- lm(price_cents ~ q_agg_kwh, data = energy)
+```
+
+### Question 1
+
+One kWh of electricity emits 0.85 pounds of CO2. Assuming that the interim SCC correctly reflects the total social cost of one metric ton of CO2, what is the marginal externality cost per kwH of electricity?
+
+- 1 kWh of electricity = 0.85 lb CO2
+- 1 metric ton = 2204.6 lbs. Thus 1 metric ton of CO2 is emitted from 2204.6/0.85 = 2594 kWh of electricity
+- SCC is $51/MT CO2. Thus, the SCC is set to 51 USD per 2594 kWh, or 1.97 cents per kWh.
+- The marginal external cost of 1 kWh of electricity production considering the impacts of carbon emissions associated with that electricity production is **1.97 cents per kWh.** There may be other negative external costs associated with non-carbon characteristics of electricity production such as land use.
+
+### Question 2
+
+What is the average monthly demand curve for electricity?
+What is the supply curve for electricity?
+(graph them)
+
+To find the supply curve, we want to know the q_kwh where D_agg = 10 cents.
+Put in y = mx + b format, then set x = (b-y)/m and solve for x.
+
+Benefit to consumers under status quo: integral from 0 to q_0 of d_agg curve - q_0 * 10 cents
+Benefit to producers: integral from 0 to q_0 of supply curve
+Environmental cost: 1.97 cents/kWh * q_0 kWh
+
+```{r}
+d_agg <- function(m, b){
+  y <- m*x + b
+  return(y)
+}
+
+d_agg(agg_lm[2], agg_lm[1])
+```
+
