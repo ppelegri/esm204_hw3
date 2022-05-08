@@ -5,13 +5,18 @@ date: "5/2/2022"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r setup, include=FALSE, message = FALSE, warning = FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
 
 library(here)
 library(tidyverse)
 library(janitor)
 ```
+
+**TO-DOS**
+
+ - GRAPH SUPPLY AND DEMAND CURVES
+ - HOW TO SET D_AGG CURVE = TO SUPPLY CURVE W/ TAX? (Where is the equation that describes the aggregate demand curve?)
 
 **Starting facts**
 
@@ -20,7 +25,6 @@ library(janitor)
  - The current electricity price (without any taxes) is $.10 per kWh.
  - The marginal cost of producing a kWh of electricity is linear and has a price-intercept of 0.
 
-
 ### Step 0
 
 ```{r}
@@ -28,21 +32,15 @@ library(janitor)
 energy_raw <- read_csv(here('data', 'HW3_data.csv'))
 
 energy <- clean_names(energy_raw) %>% 
+  select(-1) %>% 
   mutate(q_agg_kwh = q_high_kwh + q_low_kwh)
-
-  
-  # %>% 
-#  pivot_longer(q_low_kwh:q_high_kwh, names_to = 'income', values_to = 'q_kwh')
-
-
 ```
 
 
 ```{r}
 # Run linear regression to estimate demand curves for high- and low-income consumers
-high_lm <- lm(price_cents ~ q_high_kwh, data = energy)
-low_lm <- lm(price_cents ~ q_low_kwh, data = energy)
-agg_lm <- lm(price_cents ~ q_agg_kwh, data = energy)
+model_demand_l <- lm(price_cents ~ q_low_kwh, data = energy)
+model_demand_h <- lm(price_cents ~ q_high_kwh, data = energy)
 ```
 
 ### Question 1
@@ -52,27 +50,85 @@ One kWh of electricity emits 0.85 pounds of CO2. Assuming that the interim SCC c
 - 1 kWh of electricity = 0.85 lb CO2
 - 1 metric ton = 2204.6 lbs. Thus 1 metric ton of CO2 is emitted from 2204.6/0.85 = 2594 kWh of electricity
 - SCC is $51/MT CO2. Thus, the SCC is set to 51 USD per 2594 kWh, or 1.97 cents per kWh.
-- The marginal external cost of 1 kWh of electricity production considering the impacts of carbon emissions associated with that electricity production is **1.97 cents per kWh.** There may be other negative external costs associated with non-carbon characteristics of electricity production such as land use.
+- The marginal external cost of 1 kWh of electricity production considering the impacts of carbon emissions associated with that electricity production is **1.97 cents per kWh.** Note: there may be other negative external costs associated with non-carbon characteristics of electricity production such as land use. Those are not included in this external cost.
 
 ### Question 2
 
-What is the average monthly demand curve for electricity?
-What is the supply curve for electricity?
-(graph them)
+```{r}
+# need to rearrange the parameter to get Q(P)! 
+# Qagg = Qlow(P) + Qlow(h) 
+# Importantly, since the y-intercepts are different, we know that Qagg(P) will have a kink. I include an ifelse() statement to take care of the kink.
 
-To find the supply curve, we want to know the q_kwh where D_agg = 10 cents.
-Put in y = mx + b format, then set x = (b-y)/m and solve for x.
-
-Benefit to consumers under status quo: integral from 0 to q_0 of d_agg curve - q_0 * 10 cents
-Benefit to producers: integral from 0 to q_0 of supply curve
-Environmental cost: 1.97 cents/kWh * q_0 kWh
+# Define demand function
+demand <- function(p, model){
+  q <- (p - model$coefficients[[1]]/model$coefficients[[2]]) # numerator = m, denominator = b
+  q <- ifelse(q<0, 0, q)
+  return(q)
+}
+```
 
 ```{r}
-d_agg <- function(m, b){
-  y <- m*x + b
-  return(y)
+# for each p level, return estimated aggregate demand
+demand_agg <- function(p){
+  q <- demand(p, model_demand_l) + demand(p, model_demand_h)
+  return(q)
 }
-
-d_agg(agg_lm[2], agg_lm[1])
 ```
+
+The aggregate monthly demand curve for electricity is found by horizontally stacking the demand curves for high income and low income consumers.
+
+To find the supply curve, we want to know the quantity of kWh where aggregate demand equals 10 cents. This is 819,733.7 kWh. Since we know the origin of the supply curve is at y = 0 and the curve is linear, we can simply find the slope coefficient that connects the points (0 kWh, 0 cents/kWh) and (819,733.7 kWh, 10 cents/kWh).
+
+**The supply and demand curves are graphed below.**
+
+10 = 819733.7x
+x = 0.0000121991
+supply curve: y = 0.0000121991x
+
+```{r}
+CS <- function(p, model){
+  q <- demand(p, model)
+  cs <- 0.5*(model$coefficients[[1]] - p)*q
+  return(cs)
+}
+```
+
+```{r}
+CS_agg <- function(p){
+  cs <- CS(p,model_demand_l) + CS(p,model_demand_h)
+  return(cs)
+}
+```
+
+**Consumer surplus under status quo:** Total consumer surplus at a price of 10 cents is **79,824.95 USD.** This was obtained by adding consumer surplus for the low income and high income groups and converting from cents to dollars.
+
+```{r}
+PS <- function(p){
+  ps <- 0.5*(p/0.0000121991)
+  return(ps)
+}
+```
+
+**Producer surplus under status quo: 4,098.66 USD**
+
+**Environmental cost under status quo:** 1.97 cents/kWh * 819,733.7 kWh = **16,148.75 USD**
+
+```{r}
+price = seq(0, 30, length.out = 100)
+Qagg <- map(price, demand_agg) %>% unlist()
+
+df<- tibble(Qagg = Qagg, price = price)
+
+ggplot(df, aes(Qagg, price)) +
+  geom_line()
+```
+
+### Question 3
+
+Under the status quo, the consumer surplus for low-income consumers is 14,180.30 USD and the surplus for high-income consumers is 65,644.65 USD. That is, the surplus for high-income consumers is over four times larger than the surplus for low-income consumers.
+
+### Question 4
+
+Applying a tax on producers to address the interim SCC will shift the producer supply curve up by 1.97 cents/kWh.
+
 
