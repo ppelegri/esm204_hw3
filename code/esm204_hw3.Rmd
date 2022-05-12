@@ -15,9 +15,9 @@ library(janitor)
 
 ### Starting facts
 
- - Consumers can be separated into two income groups: “high” and “low.” The data set provides price (in $) and quantity (in kWh) estimates of demand per month for the two groups. Run linear regressions (with an intercept) to estimate the demand curves for “high” and “low” income consumers.
+ - Consumers can be separated into two income groups: “high” and “low.” The data set provides price (in USD) and quantity (in kWh) estimates of demand per month for the two groups. Run linear regressions (with an intercept) to estimate the demand curves for “high” and “low” income consumers.
  - Initially, there is no tax on electricity consumption.
- - The current electricity price (without any taxes) is $.10 per kWh.
+ - The current electricity price (without any taxes) is 0.10 USD per kWh.
  - The marginal cost of producing a kWh of electricity is linear and has a price-intercept of 0.
 
 ```{r}
@@ -47,34 +47,15 @@ One kWh of electricity emits 0.85 pounds of CO2. Assuming that the interim SCC c
 
 ### Question 2
 
-```{r}
-# need to rearrange the parameter to get Q(P)! 
-# Qagg = Qlow(P) + Qlow(h) 
-# Importantly, since the y-intercepts are different, we know that Qagg(P) will have a kink. I include an ifelse() statement to take care of the kink.
-
-# Define demand function
-demand <- function(p, model){
-  q <- (p - model$coefficients[[1]]/model$coefficients[[2]]) # numerator = m, denominator = b
-  q <- ifelse(q<0, 0, q)
-  return(q)
-}
-```
-
-```{r}
-# for each p level, return estimated aggregate demand
-demand_agg <- function(p){
-  q <- demand(p, low_lm) + demand(p, high_lm)
-  return(q)
-}
-```
-
 The aggregate monthly demand curve for electricity is found by horizontally stacking the demand curves for high income and low income consumers.
 
-To find the supply curve, we want to know the quantity of kWh where aggregate demand equals 10 cents. This is 536,719.5 kWh. Since we know the origin of the supply curve is at y = 0 and the curve is linear, we can simply find the slope coefficient that connects the points (0 kWh, 0 cents/kWh) and (536,719.5 kWh, 10 cents/kWh).
+To find the supply curve, we want to know the quantity of kWh where aggregate demand equals 10 cents/kWh. This is 536,719.5 kWh. Since we know the origin of the supply curve is at y = 0 and the curve is linear, we can simply find the slope coefficient that connects the points (0 kWh, 0 cents/kWh) and (536,719.5 kWh, 10 cents/kWh).
 
 **The supply and demand curves are graphed below.**
 
 ```{r}
+# Functions
+
 # Storing intercepts and slopes as objects
 low_int <- low_lm$coefficients[1]
 low_slp <- low_lm$coefficients[2]
@@ -141,6 +122,8 @@ ps <- function(p){
 ```
 
 ```{r}
+# Plot
+
 ggplot() +
   stat_function(color = "royalblue2", fun = d_low, size = 1, linetype = "twodash") +
   stat_function(color = "royalblue4", fun = d_high, size = 1, linetype = "twodash") +
@@ -154,7 +137,6 @@ ggplot() +
   geom_text(aes(label = "High Demand", x = 370000, y = 14), angle = -33, size = 3) +
   geom_text(aes(label = "Aggregate Demand", x = 450000, y = 14.5), angle = -24, size = 3) +
   geom_text(aes(label = "MPC", x = 750000, y = 14.75), angle =11, size = 3) +
-  geom_text(aes(label = "MSC", x = 800000, y = 18), angle = 11, size = 3) +
   geom_text(aes(label = "MEC", x = 850000, y = 3), size = 3) +
   theme_classic() +
   theme(legend.title = element_blank(),
@@ -165,15 +147,15 @@ ggplot() +
 ```
 
 
-**Consumer surplus under status quo:** Total consumer surplus at a price of 10 cents is **52,987.22 USD.** 
+**Consumer surplus under status quo:** Total consumer surplus (using aggregate demand curve) at a price of 10 cents/kWh is **52,987.22 USD.** 
 
-**Producer surplus under status quo:** Producer surplus at a price of 10 cents is **26,835.97 USD**
+**Producer surplus under status quo:** Producer surplus at a price of 10 cents/kWh is **26,835.97 USD**
 
 **Environmental cost under status quo:** 1.97 cents/kWh * 536,719.5 kWh = **10,573.37 USD**
 
 ### Question 3
 
-Under the status quo, the **consumer surplus for low-income consumers is 8,112.43 USD** and the **surplus for high-income consumers is 44,874.79 USD.** That is, the surplus for high-income consumers is over five times larger than the surplus for low-income consumers.
+Under the status quo, the **consumer surplus for low-income consumers is 8,112.43 USD** and the **surplus for high-income consumers is 44,874.79 USD.** These are calculated by finding the consumer surplus for the two consumer groups' respective demand curves at a price of 10 cents/kWh.
 
 ### Question 4
 
@@ -200,12 +182,12 @@ uniroot(function(p)
         interval = c(0,20))
 ```
 
-Applying a tax on consumers to address the interim SCC will shift the demand curve down by 1.97 cents/kWh. 
+Applying a tax on consumers to address the interim SCC will shift the aggregate demand curve down by 1.97 cents/kWh. 
  
- - Setting the new aggregate demand curve equal to the supply curve, we find that the **new equilibrium price of electricity will be 9.32 cents/kWh.**
- - Quantity of electricity: **500,213.2 kWh**
- - Welfare of high income consumers: **39,676.40 USD**
- - Welfare of low income consumers: 6,622.60 USD surplus minus a cumulative external cost of 9,854.20 USD borne entirely by low-income consumers results in a **net loss of 3,231.60 USD**
+ - Setting the new aggregate demand curve equal to the supply curve, we find that the **new equilibrium price of electricity will be 9.32 cents/kWh.** This is the price received by producers. Consumers will pay 9.32 (producer price) + 1.97 (tax) = 11.29 cents/kWh.
+ - Quantity of electricity: **500,213.2 kWh**, down from 536,719.5 kWh pre-tax
+ - Welfare of high income consumers: **39,676.40 USD**, down from 44,874.79 USD pre-tax
+ - Welfare of low income consumers: 6,622.60 USD surplus minus a cumulative external cost of 9,854.20 USD borne entirely by low-income consumers results in a **net loss of -1,741.95 USD**. If one treats  environmental damages before the tax as also entirely borne by low-income consumers, then pre-tax low-income consumer surplus pre-tax was -2,460.94 USD. Thus, low-income consumers are better off post-tax since their surplus is less negative.
  - Welfare of power suppliers (i.e. producers): **23,310.37 USD**
  - Total environmental damage: MEC times quantity produced = **9,854.20 USD**
  - Total tax revenue generated: size of the tax = MEC. So the total tax revenue generated will also be **9,854.20 USD**
@@ -300,9 +282,12 @@ mec_150 <- function(q) {5.78}
 ```
 
  
+```{r}
+
+```
+
  
- 
-Dollars per kWh at each SCC
+Dollars per kWh at each SCC. This the MEC and tax. This was found by converting USD/MTCO2 into USD/kWh.
 
  - 51: 1.97 cents/kWh
  - 75: 2.89 cents/kWh
@@ -310,13 +295,13 @@ Dollars per kWh at each SCC
  - 125: 4.82 cents/kWh
  - 150: 5.78 cents/kWh
  
-Equilibrium price + tax and quantity at each dollar value of SCC
+Equilibrium price (not including tax) and quantity at each dollar value of SCC. Aggregate demand functions were shifted downward by the tax calculated above. Then the intersection between the modified aggregate demand function and MPC curve was calculated to find equilibrium price and quantity.
 
- - 51 USD/MTCO2e: 11.29 cents, 500213.2 kWh
- - 75 USD/MTCO2e: 11.89 cents, 483233.5 kWh
- - 100 USD/MTCO2e: 12.53 cents, 465121.9 kWh
- - 125 USD/MTCO2e: 13.16 cents, 447293.3 kWh
- - 150 USD/MTCO2e: 13.78 cents, 429747.6 kWh
+ - 51 USD/MTCO2: 9.32 cents, 500213.2 kWh
+ - 75 USD/MTCO2: 9.00 cents, 483233.5 kWh
+ - 100 USD/MTCO2: 8.67 cents, 465121.9 kWh
+ - 125 USD/MTCO2: 8.34 cents, 447293.3 kWh
+ - 150 USD/MTCO2: 8.00 cents, 429747.6 kWh
 
 
 ```{r eval = FALSE}
@@ -360,40 +345,56 @@ dem_150(13.78, high_lm)/(dem_150(13.78, high_lm) + dem_150(13.78, low_lm))
 ```
 
 
+#### Calculating welfare
+
+ - Welfare of high income consumers per estimated SCC was found by calculating the consumer surplus and adding the percent of electricity consumption by that group times the total tax revenue. 
+  - Percent electricity consumption per group was found by taking the quantity of electricity a consumer group used at a given price and dividing by the quantity of electricity used by both consumer groups at that price.
+ - Welfare of low income customers used the same method as welfare of high income consumers, followed by subtracting the total environmental cost (which is equal to the damage rate in cents/kWh times the total quantity of electricity consumed)
+ - Welfare for producers was simply producer surplus with no adjustments needed.
+ 
+```{r}
+# scc_v <- c(51, 75, 100, 125, 150)
+# 
+# high_cons_v <- c(47,461.36, 48,675.21, 49,709.87, 50,832.16, 52,138.60)
+# 
+
+```
+
+ 
 Welfare of high income consumers per estimated SCC
 
- - 51 USD/MTCO2e: 3967640 (surplus) + 0.79 (pct consumption) x 985438.3 (tax revenue)  = **47,461.36 USD**
- - 75 USD/MTCO2e: 3736755 + (0.81 x 1396007) = **48,675.21 USD**
- - 100 USD/MTCO2e: 3498106  + (0.82 x 1796196) = **49,709.87 USD**
- - 125 USD/MTCO2e: 3270876  + (0.84 x 2157548) = **50,832.16 USD**
- - 150 USD/MTCO2e: 3054702  + (0.87 x 2481791) = **52,138.60 USD**
- - The proportion of electricity consumption by high-income consumers rises as the effective price rises because high income consumers have a less elastic demand curve
+ - 51 USD/MTCO2: 3967640 (surplus) + 0.79 (pct consumption) x 985438.3 (tax revenue)  = **47,461.36 USD**
+ - 75 USD/MTCO2: 3736755 + (0.81 x 1396007) = **48,675.21 USD**
+ - 100 USD/MTCO2: 3498106  + (0.82 x 1796196) = **49,709.87 USD**
+ - 125 USD/MTCO2: 3270876  + (0.84 x 2157548) = **50,832.16 USD**
+ - 150 USD/MTCO2: 3054702  + (0.87 x 2481791) = **52,138.60 USD**
+ - Note: The proportion of electricity consumption by high-income consumers rises as the effective price rises because high income consumers have a less elastic demand curve for electricity consumption.
 
  
 Welfare of low income consumers per estimated SCC
 
- - 51 USD/MTCO2e: 895855.2 (surplus) + 0.21 (pct consumption) * 985438.3 (tax revenue) - 985438.3 (env damages) = **1,173.59 USD**
- - 75 USD/MTCO2e: 937124.7 + (0.19 x 1396007) - 1396007 = **-1,936.41 USD** (net loss)
- - 100 USD/MTCO2e: 980657.1 + (0.18 x 1796196) - 1796196 = **-4,922.24 USD**
- - 125 USD/MTCO2e: 1025178 + (0.16 x 2157548) - 2157548 = **-7,871.62 USD**
- - 150 USD/MTCO2e: 1072081 + (0.13 x 2481791) - 2481791 = **-10,870.77 USD**
+ - 51 USD/MTCO2: 895855.2 (surplus) + 0.21 (pct consumption) * 985438.3 (tax revenue) - 985438.3 (env damages) = **1,173.59 USD**
+ - 75 USD/MTCO2: 937124.7 + (0.19 x 1396007) - 1396007 = **-1,936.41 USD** (net loss)
+ - 100 USD/MTCO2: 980657.1 + (0.18 x 1796196) - 1796196 = **-4,922.24 USD**
+ - 125 USD/MTCO2: 1025178 + (0.16 x 2157548) - 2157548 = **-7,871.62 USD**
+ - 150 USD/MTCO2: 1072081 + (0.13 x 2481791) - 2481791 = **-10,870.77 USD**
  
 Welfare of electricity producers per estimated SCC
 
- - 51 USD/MTCO2e: **23,310.37 USD**
- - 75 USD/MTCO2e: **21,737.14 USD**
- - 100 USD/MTCO2e: **20,172.31 USD**
- - 125 USD/MTCO2e: **18,665.92 USD**
- - 150 USD/MTCO2e: **17,175.02 USD**
+ - 51 USD/MTCO2: **23,310.37 USD**
+ - 75 USD/MTCO2: **21,737.14 USD**
+ - 100 USD/MTCO2: **20,172.31 USD**
+ - 125 USD/MTCO2: **18,665.92 USD**
+ - 150 USD/MTCO2: **17,175.02 USD**
 
 ### Question 6
 
-I assume we use an SCC of 51 USD/MTCO2e and a tax of 1.97 cents/kWh. Adding solar for the high income group will halve their y-intercept after accounting for the tax. The y-intercept for the low income group will only be affected by the tax.
+I assume we use an SCC of 51 USD/MTCO2e and a tax of 1.97 cents/kWh. Adding solar for the high income group will halve the y-intercept of their demand curve after accounting for the tax. The y-intercept for the low income group's demand curve will only be affected by the tax.
 
- - The new quantity of electricity consumed is is **313444.2 kWh**
+ - The new quantity of electricity consumed is **313,444.2 kWh**
  - Total environmental externality is **6,174.85 USD**: the quantity of electricity consumed times the marginal external cost of 1.97 cents/kWh
  
- Assuming there is no solar available, the total size of tax that would lead to an equilibrium quantity of electricity consumption of 313444.2 kWh is **12.05 cents/kWh** which would result in producers receiving 5.84 cents/kWh and consumers paying 17.89 cents/kWH
+ Assuming there is no solar available, the total size of tax that would lead to an equilibrium quantity of electricity consumption of 313,444.2 kWh is **12.05 cents/kWh** which would result in producers receiving 5.84 cents/kWh and consumers paying 17.89 cents/kWH
 
 ```{r}
 # Demand function with solar and SCC at 51
